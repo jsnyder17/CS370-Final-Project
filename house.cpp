@@ -164,11 +164,15 @@ GLfloat fan_angle = 0.0f;
 GLfloat rpm = 3.0f;
 GLfloat camera_angle = 180.0f;
 GLfloat step_size = 0.1f;
+GLfloat blind_angle = 0.0f;
+GLfloat max_blind_angle = 90.0f;
 GLdouble elTime = 0.0;
 GLboolean pyr_dance = false;
 GLboolean first_person = false;
 GLboolean bump = false;
 GLboolean mirror = false;
+GLboolean move_blinds = false;
+GLint blind_dir = 1;
 GLint x = 0; GLint y = 1; GLint z = 2;
 
 void display();
@@ -184,6 +188,7 @@ void render_objects();
 void render_table();
 void render_chairs();
 void render_ceiling_fan();
+void render_blinds();
 void build_poster(GLuint obj);
 void build_mirror(GLuint m_texid);
 void build_geometry();
@@ -384,6 +389,13 @@ void update_animations() {
         fan_angle += (float) (dT * (rpm / 60.0) * 360.0) * 4;
     }
 
+    if (move_blinds) {
+        blind_angle += (float) ((dT * (rpm / 60.0) * 360.0) * 4) * (float) blind_dir;
+        if (blind_angle >= max_blind_angle || blind_angle <= 0.0f) {
+            blind_dir = -blind_dir;
+            move_blinds = false;
+        }
+    }
     elTime = curTime;
 }
 
@@ -436,6 +448,7 @@ void render_scene() {
     render_table();
     render_chairs();
     render_ceiling_fan();
+    render_blinds();
 }
 
 void render_walls() {
@@ -668,6 +681,23 @@ void render_ceiling_fan() {
     model_matrix = trans_matrix*scale_matrix*rot_matrix;
     normal_matrix = model_matrix.inverse().transpose();
     draw_mat_object(CeilingFan, YellowPlastic);
+}
+
+void render_blinds() {
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    int i;
+    for (i = 0; i < 8; i++) {
+        trans_matrix = translate(0.0f, 1.6f - ((float) i * 0.2f), -3.63f);
+        scale_matrix = scale(4.0f, 0.2f, 0.01f);
+        rot_matrix = rotate(blind_angle, x_axis);
+        model_matrix = trans_matrix * rot_matrix * scale_matrix;
+        draw_mat_object(Cube, BrownPlastic);
+    }
+
 }
 
 void build_poster(GLuint obj) {
@@ -987,12 +1017,16 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         first_person = (first_person + 1) % 2;
     }
 
-    if (key == GLFW_KEY_B && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
         bump = (bump + 1) % 2;
     }
 
     if (key == GLFW_KEY_M && action == GLFW_PRESS) {
         mirror = (mirror + 1) % 2;
+    }
+
+    if ((key == GLFW_KEY_B && action == GLFW_PRESS) && !move_blinds) {
+        move_blinds = true;
     }
 
     // Adjust azimuth
