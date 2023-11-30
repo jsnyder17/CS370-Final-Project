@@ -16,7 +16,7 @@ using namespace vmath;
 using namespace std;
 
 // Vertex array and buffer names
-enum VAO_IDs {Cube, Sphere, Couch, Table, Chair, CeilingFan, Poster, NumVAOs};
+enum VAO_IDs {Cube, Sphere, Couch, Table, Chair, CeilingFan, Poster, Mirror, Frame, NumVAOs};
 enum ObjBuffer_IDs {PosBuffer, NormBuffer, TexBuffer, TangBuffer, BiTangBuffer, NumObjBuffers};
 enum Color_Buffer_IDs {RedCube, WhiteCube, BlueOcta, GreenSphere, SomethingCylinder, NumColorBuffers};
 enum LightBuffer_IDs {LightBuffer, NumLightBuffers};
@@ -157,6 +157,8 @@ vec3 z_axis = { 0.0f, 0.0f, 1.0f };
 vec3 first_person_center = {0.0f, 0.0f, 0.0f};
 vec3 first_person_dir = { 0.0f, 0.0f, 0.0f };
 vec3 first_person_eye = {0.0f, 0.5f, 0.0f};
+vec3 mirror_center {15.0f, 0.5f, 0.0f};
+vec3 mirror_eye = {-3.5f, 0.5f, -0.5f};
 GLfloat ortho_constant = 7.0f;
 GLfloat fan_angle = 0.0f;
 GLfloat rpm = 3.0f;
@@ -166,9 +168,11 @@ GLdouble elTime = 0.0;
 GLboolean pyr_dance = false;
 GLboolean first_person = false;
 GLboolean bump = false;
+GLboolean mirror = false;
 GLint x = 0; GLint y = 1; GLint z = 2;
 
 void display();
+void create_mirror();
 void calculate_first_person_camera();
 void update_animations();
 void render_scene();
@@ -181,6 +185,7 @@ void render_table();
 void render_chairs();
 void render_ceiling_fan();
 void build_poster(GLuint obj);
+void build_mirror(GLuint m_texid);
 void build_geometry();
 void build_solid_color_buffer(GLuint num_vertices, vec4 color, GLuint buffer);
 void build_materials( );
@@ -193,6 +198,7 @@ void load_texture(const char * filename, GLuint texID, GLint magFilter, GLint mi
 void draw_color_obj(GLuint obj, GLuint color);
 void draw_mat_object(GLuint obj, GLuint material);
 void draw_tex_object(GLuint obj, GLuint texture);
+void draw_frame(GLuint obj);
 void draw_bump_object(GLuint obj, GLuint base_texture, GLuint normal_map);
 void _computeTangentBasis(vector<vec4> & vertices, vector<vec2> & uvs, vector<vec3> & normals, vector<vec3> & tangents,
                           vector<vec3> & binormals);
@@ -287,6 +293,8 @@ int main(int argc, char**argv) {
     build_lights();
     // Create textures
     build_textures();
+    // Create mirror
+    build_mirror(Blank);
 
     // Enable depth test
     glEnable(GL_CULL_FACE);
@@ -307,6 +315,9 @@ int main(int argc, char**argv) {
 
     // Start loop
     while ( !glfwWindowShouldClose( window ) ) {
+        // Create mirror
+        create_mirror();
+
     	// Draw graphics
         display();
 
@@ -327,6 +338,36 @@ int main(int argc, char**argv) {
     glfwTerminate();
     return 0;
 
+}
+
+void create_mirror() {
+    // Clear framebuffer for mirror rendering pass
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Compute anisotropic scaling
+    GLfloat xratio = 5.0f;
+    GLfloat yratio = 1.0f;
+    GLfloat top_yratio = 7.25f;
+    GLfloat bottom_yratio = 1.0f;
+
+    // TODO: Set mirror projection matrix
+    proj_matrix = frustum(-1.0f * xratio, 1.0f * xratio, -1.0f * bottom_yratio, 1.0f * top_yratio, 1.0f, 100.0f);
+
+    // TODO: Set mirror camera matrix
+    camera_matrix = lookat(mirror_eye, mirror_center, up);
+
+    // Render mirror scene (without mirror)
+    mirror = true;
+    render_scene();
+    glFlush();
+    mirror = false;
+
+    // TODO: Activate texture unit 0
+    glActiveTexture(GL_TEXTURE0);
+    // TODO: Bind mirror texture
+    glBindTexture(GL_TEXTURE_2D, TextureIDs[Blank]);
+    // TODO: Copy framebuffer into mirror texture
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, ww, hh, 0);
 }
 
 void calculate_first_person_camera() {
@@ -537,11 +578,14 @@ void render_objects() {
     mat4 trans_matrix = mat4().identity();
 
     // Mirror
-    trans_matrix = translate(-3.5f, 1.0f, -0.5f);
-    scale_matrix = scale(4.5f, 3.5f, 0.1f);
-    rot_matrix = rotate(90.0f, y_axis);
-    model_matrix = trans_matrix * rot_matrix * scale_matrix;
-    draw_mat_object(Cube, RedPlastic);
+    if (!mirror)
+        draw_frame(Frame);
+        trans_matrix = translate(-3.5f, 1.0f, -0.5f);
+        scale_matrix = scale(3.5f, 4.5f, 0.1f);
+        rot_matrix = rotate(90.0f, y_axis);
+        rot_matrix_2 = rotate(90.0f, z_axis);
+        model_matrix = trans_matrix * rot_matrix * rot_matrix_2 * scale_matrix;
+        draw_tex_object(Cube, Blank);
 
     // Sofa
     trans_matrix = translate(2.0f, -0.85f, -3.0f);
@@ -688,6 +732,50 @@ void build_poster(GLuint obj) {
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*bitangCoords*numVertices[obj], obj_uvs.data(), GL_STATIC_DRAW);
 }
 
+void build_mirror(GLuint m_texid ) {
+    // Generate mirror texture
+    glGenTextures(1, &TextureIDs[m_texid]);
+    // Bind mirror texture
+    glBindTexture(GL_TEXTURE_2D, TextureIDs[m_texid]);
+    // TODO: Create empty mirror texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ww, hh, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+}
+
+void build_frame(GLuint obj) {
+    vector<vec4> vertices;
+    vector<vec3> normals;
+
+    // Create wireframe for mirror
+    vertices = {
+            vec4(1.0f, 0.0f, -1.0f, 1.0f),
+            vec4(1.0f, 0.0f, 1.0f, 1.0f),
+            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
+            vec4(-1.0f, 0.0f, -1.0f, 1.0f)
+    };
+
+    normals = {
+            vec3(0.0f, 1.0f, 0.0f),
+            vec3(0.0f, 1.0f, 0.0f),
+            vec3(0.0f, 1.0f, 0.0f),
+            vec3(0.0f, 1.0f, 0.0f)
+    };
+
+    numVertices[obj] = vertices.size();
+
+    // Create and load object buffers
+    glGenBuffers(NumObjBuffers, ObjBuffers[obj]);
+    glBindVertexArray(VAOs[obj]);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][PosBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*posCoords*numVertices[obj], vertices.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][NormBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*normCoords*numVertices[obj], normals.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void build_geometry() {
     // Generate vertex arrays and buffers
     glGenVertexArrays(NumVAOs, VAOs);
@@ -701,6 +789,8 @@ void build_geometry() {
     load_bump_model(posterFile, Poster);
 
     build_poster(Poster);
+
+    build_frame(Frame);
 
     // Generate color buffers
     glGenBuffers(NumColorBuffers, ColorBuffers);
@@ -899,6 +989,10 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_B && action == GLFW_PRESS) {
         bump = (bump + 1) % 2;
+    }
+
+    if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+        mirror = (mirror + 1) % 2;
     }
 
     // Adjust azimuth

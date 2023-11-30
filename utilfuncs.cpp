@@ -309,6 +309,48 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     hh = height;
 }
 
+void draw_frame(GLuint obj){
+    // Draw frame using lines at mirror location
+    glUseProgram(lighting_program);
+    // Pass projection and camera matrices to shader
+    glUniformMatrix4fv(lighting_proj_mat_loc, 1, GL_FALSE, proj_matrix);
+    glUniformMatrix4fv(lighting_camera_mat_loc, 1, GL_FALSE, camera_matrix);
+
+    // Bind lights
+    glUniformBlockBinding(lighting_program, lighting_lights_block_idx, 0);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, LightBuffers[LightBuffer], 0, Lights.size()*sizeof(LightProperties));
+    // Bind materials
+    glUniformBlockBinding(lighting_program, lighting_materials_block_idx, 1);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 1, MaterialBuffers[MaterialBuffer], 0, Materials.size()*sizeof(MaterialProperties));
+    // Set camera position
+    glUniform3fv(lighting_eye_loc, 1, eye);
+    // Set num lights and lightOn
+    glUniform1i(lighting_num_lights_loc, numLights);
+    glUniform1iv(lighting_light_on_loc, numLights, lightOn);
+
+    // Set frame transformation matrix
+    mat4 trans_matrix = translate(mirror_eye);
+    mat4 rot_matrix = rotate(90.0f, z_axis);
+    mat4 scale_matrix = scale(0.5f, 0.0f, 1.5f);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    // Compute normal matrix from model matrix
+    normal_matrix = model_matrix.inverse().transpose();
+    // Pass model matrix and normal matrix to shader
+    glUniformMatrix4fv(lighting_model_mat_loc, 1, GL_FALSE, model_matrix);
+    glUniformMatrix4fv(lighting_norm_mat_loc, 1, GL_FALSE, normal_matrix);
+    glUniform1i(lighting_material_loc, RedPlastic);
+
+    // Draw object using line loop
+    glBindVertexArray(VAOs[obj]);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][PosBuffer]);
+    glVertexAttribPointer(lighting_vPos, posCoords, GL_FLOAT, GL_FALSE, 0, NULL);
+    glEnableVertexAttribArray(lighting_vPos);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][NormBuffer]);
+    glVertexAttribPointer(lighting_vNorm, normCoords, GL_FLOAT, GL_FALSE, 0, NULL);
+    glEnableVertexAttribArray(lighting_vNorm);
+    glDrawArrays(GL_LINE_LOOP, 0, numVertices[obj]);
+}
+
 
 void _computeTangentBasis(
         // inputs
