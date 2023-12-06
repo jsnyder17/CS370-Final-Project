@@ -22,7 +22,7 @@ enum Color_Buffer_IDs {RedCube, WhiteCube, BlueOcta, GreenSphere, SomethingCylin
 enum LightBuffer_IDs {LightBuffer, NumLightBuffers};
 enum MaterialBuffer_IDs {MaterialBuffer, NumMaterialBuffers};
 enum MaterialNames {RedPlastic, GreenPlastic, BluePlastic, WhitePlastic, YellowPlastic, BrownPlastic};
-enum Textures {Blank, Megadeth, MegadethNormFlat, Floor, Wood, WoodNormOut, Wall, WallNormFlat, WallNormOut, Carpet, CarpetNormOut, NumTextures};
+enum Textures {Blank, Megadeth, MegadethNormFlat, Floor, Wood, WoodNormOut, Wall, WallNormFlat, WallNormOut, Carpet, CarpetNormOut, Fan, FanNormFlat, NumTextures};
 enum LightNames {WhitePointLight, DoorLight, PaintingLight, CeilingFanLight};
 
 // Vertex array and buffer objects
@@ -63,6 +63,8 @@ const char * wallNormFlatFile = "../textures/wallnormflat.png";
 const char * wallNormOutFile = "../textures/wallnormout.png";
 const char * carpetFile = "../textures/carpet.jpg";
 const char * carpetNormOutFile = "../textures/carpetnormout.png";
+const char * fanFile = "../textures/fan.jpg";
+const char * fanNormFlatFile = "../textures/fannormflat.png";
 
 // Camera
 vec3 eye = {3.0f, 0.0f, 0.0f};
@@ -149,7 +151,7 @@ GLint ww,hh;
 
 // My constants
 vec3 wall_scale_matrix = {7.025f, 4.0f, 0.25f};
-vec3 floor_scale_matrix = {7.0f, 0.1f, 7.0f};
+vec3 floor_scale_matrix = {7.1f, 0.1f, 7.1f};
 vec3 door_coords = {3.45f, 0.0f, -1.25f};
 vec3 painting_coords = {0.0f, 0.5f, 3.3f};
 vec3 ceiling_fan_coords = {0.0f, -0.7f, 0.0f};
@@ -467,20 +469,14 @@ void render_walls() {
     scale_matrix = scale(wall_scale_matrix);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 
     trans_matrix = translate(3.63f, 1.0f, 0.0f);
     rot_matrix = rotate(90.0f, y_axis);
     scale_matrix = scale(wall_scale_matrix);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 
     // Wall with window
     trans_matrix = translate(0.0f, -0.45f, -3.63f);
@@ -488,50 +484,35 @@ void render_walls() {
     scale_matrix = scale(wall_scale_matrix[x], 1.1f, wall_scale_matrix[z]);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 
     trans_matrix = translate(-2.4f, 1.0f, -3.63f);
     rot_matrix = rotate(0.0f, z_axis);
     scale_matrix = scale(wall_scale_matrix[x] / 3, wall_scale_matrix[y], wall_scale_matrix[z]);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 
     trans_matrix = translate(2.4f, 1.0f, -3.63f);
     rot_matrix = rotate(0.0f, z_axis);
     scale_matrix = scale(wall_scale_matrix[x] / 3, wall_scale_matrix[y], wall_scale_matrix[z]);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 
     trans_matrix = translate(0.0f, 2.335f, -3.63f);
     rot_matrix = rotate(0.0f, z_axis);
-    scale_matrix = scale((wall_scale_matrix[x] / 3) + 0.1f, wall_scale_matrix[y] / 3, wall_scale_matrix[z]);
+    scale_matrix = scale((wall_scale_matrix[x] / 3) + 0.2f, wall_scale_matrix[y] / 3, wall_scale_matrix[z]);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 
     trans_matrix = translate(-3.63f, 1.0f, 0.0f);
     rot_matrix = rotate(90.0f, y_axis);
     scale_matrix = scale(wall_scale_matrix);
     model_matrix = trans_matrix*rot_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(WallCube, Wall, WallNormOut);
-    else
-        draw_tex_object(WallCube, Wall);
+    draw_mat_object(Cube, WhitePlastic);
 }
 
 void render_door() {
@@ -687,7 +668,10 @@ void render_ceiling_fan() {
     rot_matrix = rotate(fan_angle, y_axis);
     model_matrix = trans_matrix*scale_matrix*rot_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    draw_mat_object(CeilingFan, YellowPlastic);
+    if (bump)
+        draw_bump_object(CeilingFan, Fan, FanNormFlat);
+    else
+        draw_tex_object(CeilingFan, Fan);
 }
 
 void render_blinds() {
@@ -716,10 +700,10 @@ void build_poster(GLuint obj) {
     vector<vec3> bitangents;
 
     vertices = {
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
+            vec4(0.5f, 0.0f, 0.5f, 1.0f),
+            vec4(0.5f, 0.0f, -0.5f, 1.0f),
+            vec4(-0.5f, 0.0f, -0.5f, 1.0f),
+            vec4(-0.5f, 0.0f, 0.5f, 1.0f),
     };
 
     /******************************************/
@@ -727,10 +711,10 @@ void build_poster(GLuint obj) {
     /******************************************/
     // TODO: Add carpet texture coordinates
     uvCoords = {
-            vec2(1.0f, 1.0f),
-            vec2(1.0f, 0.0f),
+            vec2(0.5f, 1.0f),
+            vec2(0.5f, 0.0f),
             vec2(0.0f, 0.0f),
-            vec2(0.0f, 1.0f),
+            vec2(0.0f, 0.5f),
     };
 
     // Define face indices
@@ -892,35 +876,30 @@ void build_wall(GLuint obj) {
     vector<vec3> bitangents;
 
     vertices = {
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
-
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
-
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
-
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
-
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
-
-            vec4(1.0f, 0.0f, 1.0f, 1.0f),
-            vec4(1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, -1.0f, 1.0f),
-            vec4(-1.0f, 0.0f, 1.0f, 1.0f),
+            vec4(-1.0f, 1.0f,  -1.0f, 1.0f),   // top
+            vec4(-1.0f, 1.0f,  1.0f, 1.0f),
+            vec4(1.0f,  1.0f,  1.0f, 1.0f),
+            vec4(1.0f,  1.0f,  -1.0f, 1.0f),
+            vec4(-1.0f,  -1.0f, 1.0f, 1.0f),   // front
+            vec4(1.0f,  -1.0f,  1.0f, 1.0f),
+            vec4(1.0f, 1.0f,  1.0f, 1.0f),
+            vec4(-1.0f, 1.0f, 1.0f, 1.0f),
+            vec4(-1.0f, -1.0f, -1.0f, 1.0f),   // back
+            vec4(-1.0f, 1.0f,  -1.0f, 1.0f),
+            vec4(1.0f,  1.0f,  -1.0f, 1.0f),
+            vec4(1.0f,  -1.0f, -1.0f, 1.0f),
+            vec4(1.0f, -1.0f, -1.0f, 1.0f),    // left
+            vec4(1.0f, 1.0f, -1.0f, 1.0f),
+            vec4(1.0f, 1.0f,  1.0f, 1.0f),
+            vec4(1.0f, -1.0f,  1.0f, 1.0f),
+            vec4(-1.0f,  -1.0f, -1.0f, 1.0f),  // right
+            vec4(-1.0f,  -1.0f,  1.0f, 1.0f),
+            vec4(-1.0f,  1.0f,  1.0f, 1.0f),
+            vec4(-1.0f,  1.0f, -1.0f, 1.0f),
+            vec4(-1.0f, -1.0f, -1.0f, 1.0f),   // bottom
+            vec4(1.0f,  -1.0f, -1.0f, 1.0f),
+            vec4(1.0f,  -1.0f, 1.0f, 1.0f),
+            vec4(-1.0f, -1.0f, 1.0f, 1.0f),
     };
 
     /******************************************/
@@ -1009,6 +988,72 @@ void build_wall(GLuint obj) {
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*bitangCoords*numVertices[obj], bitangents.data(), GL_STATIC_DRAW);
 }
 
+void build_floor(GLuint obj) {
+    // Carpet geometry
+    vector<vec4> vertices;
+    vector<vec2> uvCoords;
+    vector<vec3> indices;
+    vector<vec3> tangents;
+    vector<vec3> bitangents;
+
+    vertices = {
+            vec4(0.5f, 0.0f, 0.5f, 1.0f),
+            vec4(0.5f, 0.0f, -0.5f, 1.0f),
+            vec4(-0.5f, 0.0f, -0.5f, 1.0f),
+            vec4(-0.5f, 0.0f, 0.5f, 1.0f),
+    };
+
+    /******************************************/
+    /*       INSERT (b) CODE HERE             */
+    /******************************************/
+    // TODO: Add carpet texture coordinates
+    uvCoords = {
+            vec2(0.5f, 1.0f),
+            vec2(0.5f, 0.0f),
+            vec2(0.0f, 0.0f),
+            vec2(0.0f, 0.5f),
+    };
+
+    // Define face indices
+    indices = {
+            {0, 1, 2},
+            {2, 3, 0},
+    };
+    int numFaces = indices.size();
+
+    // Create object vertices and colors from faces
+    vector<vec4> obj_vertices;
+    vector<vec3> obj_normals;
+    vector<vec2> obj_uvs;
+    for (int i = 0; i < numFaces; i++) {
+        for (int j = 0; j < 3; j++) {
+            obj_vertices.push_back(vertices[indices[i][j]]);
+            obj_normals.push_back(vec3(0.0f, 1.0f, 0.0f));
+            obj_uvs.push_back(uvCoords[indices[i][j]]);
+        }
+    }
+
+    // Set numVertices as total number of INDICES
+    numVertices[obj] = 3*numFaces;
+
+    _computeTangentBasis(obj_vertices, obj_uvs, obj_normals, tangents, bitangents);
+
+    // Generate object buffers for obj
+    glGenBuffers(NumObjBuffers, ObjBuffers[obj]);
+
+    // Bind and load object buffers for obj
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][PosBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*posCoords*numVertices[obj], obj_vertices.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][NormBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*normCoords*numVertices[obj], obj_normals.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][TexBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*texCoords*numVertices[obj], obj_uvs.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][TangBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*tangCoords*numVertices[obj], tangents.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, ObjBuffers[obj][BiTangBuffer]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*bitangCoords*numVertices[obj], bitangents.data(), GL_STATIC_DRAW);
+}
+
 void build_geometry() {
     // Generate vertex arrays and buffers
     glGenVertexArrays(NumVAOs, VAOs);
@@ -1018,7 +1063,7 @@ void build_geometry() {
     load_model(couchFile, Couch);
     load_bump_model(tableFile, Table);
     load_bump_model(chairFile, Chair);
-    load_model(ceilingFanFile, CeilingFan);
+    load_bump_model(ceilingFanFile, CeilingFan);
     load_bump_model(posterFile, Poster);
     load_bump_model(cubeFile, FloorCube);
     load_bump_model(cubeFile, WallCube);
@@ -1027,7 +1072,7 @@ void build_geometry() {
 
     build_frame(Frame);
 
-    build_tex_mapped_obj(FloorCube);
+    build_floor(FloorCube);
 
     build_wall(WallCube);
 
@@ -1079,8 +1124,10 @@ void build_materials() {
 
     MaterialProperties brownPlastic = {
             vec4(0.33f, 0.22f, 0.03f, 1.0f), //ambient
-            vec4(0.78f, 0.57f, 0.11f, 1.0f), //diffuse
-            vec4(0.99f, 0.91f, 0.81f, 1.0f), //specular
+            //vec4(0.78f, 0.57f, 0.11f, 1.0f), //diffuse
+            vec4(0.0f, 0.0f, 0.0f, 1.0f),
+            //vec4(0.99f, 0.91f, 0.81f, 1.0f), //specular
+            vec4(0.0f, 0.0f, 0.0f, 1.0f),
             20.0f, //shininess
             {0.0f, 0.0f, 0.0f}  //pad //pad
     };
@@ -1145,7 +1192,7 @@ void build_lights( ) {
             vec4(0.2f, 0.2f, 0.2f, 1.0f), //ambient
             vec4(1.0f, 1.0f, 1.0f, 1.0f), //diffuse
             vec4(1.0f, 1.0f, 1.0f, 1.0f), //specular
-            vec4(ceiling_fan_coords[x], 9.0f, ceiling_fan_coords[z], 1.0f),  //position
+            vec4(ceiling_fan_coords[x], 7.0f, ceiling_fan_coords[z], 1.0f),  //position
             vec4(0.0f, -1.0f, 0.0f, 0.0f), //direction
             10.0f,   //cutoff
             10.0f,  //exponent
@@ -1197,6 +1244,10 @@ void build_textures() {
     load_texture(carpetFile, Carpet, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
                  GL_REPEAT, GL_REPEAT, true, false);
     load_texture(carpetNormOutFile, CarpetNormOut, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
+                 GL_REPEAT, GL_REPEAT, true, false);
+    load_texture(fanFile, Fan, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
+                 GL_REPEAT, GL_REPEAT, true, false);
+    load_texture(fanNormFlatFile, FanNormFlat, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
                  GL_REPEAT, GL_REPEAT, true, false);
 }
 
