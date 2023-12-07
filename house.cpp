@@ -16,14 +16,14 @@ using namespace vmath;
 using namespace std;
 
 // Vertex array and buffer names
-enum VAO_IDs {Cube, Sphere, Couch, Table, Chair, CeilingFan, Poster, Mirror, Frame, FloorCube, WallCube, NumVAOs};
+enum VAO_IDs {Cube, Sphere, Couch, Table, Chair, CeilingFan, Poster, Mirror, Frame, FloorCube, WallCube, Mug, Cylinder, MonsterCan, Door, Bowl, NumVAOs};
 enum ObjBuffer_IDs {PosBuffer, NormBuffer, TexBuffer, TangBuffer, BiTangBuffer, NumObjBuffers};
 enum Color_Buffer_IDs {RedCube, WhiteCube, BlueOcta, GreenSphere, SomethingCylinder, NumColorBuffers};
 enum LightBuffer_IDs {LightBuffer, NumLightBuffers};
 enum MaterialBuffer_IDs {MaterialBuffer, NumMaterialBuffers};
-enum MaterialNames {RedPlastic, GreenPlastic, BluePlastic, WhitePlastic, YellowPlastic, BrownPlastic};
-enum Textures {Blank, Megadeth, MegadethNormFlat, Floor, Wood, WoodNormOut, Wall, WallNormFlat, WallNormOut, Carpet, CarpetNormOut, Fan, FanNormFlat, NumTextures};
-enum LightNames {WhitePointLight, DoorLight, PaintingLight, CeilingFanLight};
+enum MaterialNames {RedPlastic, GreenPlastic, BluePlastic, WhitePlastic, YellowPlastic, BrownPlastic, BlueAcrylic, YellowAcrylic};
+enum Textures {Blank, Megadeth, MegadethNormFlat, Floor, Wood, WoodNormOut, Wall, WallNormFlat, WallNormOut, Carpet, CarpetNormOut, Fan, FanNormFlat, Monster, DoorTex, DoorNormOut, NumTextures};
+enum LightNames {WhitePointLight, PaintingLight, CeilingFanLight};
 
 // Vertex array and buffer objects
 GLuint VAOs[NumVAOs];
@@ -51,6 +51,10 @@ const char * tableFile = "../models/round_table_again.obj";
 const char * chairFile = "../models/chair_again.obj";
 const char * ceilingFanFile = "../models/ceiling_fan_again.obj";
 const char * posterFile = "../models/poster.obj";
+const char * mugFile = "../models/mug.obj";
+const char * cylinderFile = "../models/cylinder.obj";
+const char * bowlFile = "../models/bowlagain.obj";
+const char * sphereFile = "../models/sphere.obj";
 
 // Texture files
 const char * blankFile = "../textures/blank.png";
@@ -65,6 +69,9 @@ const char * carpetFile = "../textures/carpet.jpg";
 const char * carpetNormOutFile = "../textures/carpetnormout.png";
 const char * fanFile = "../textures/fan.jpg";
 const char * fanNormFlatFile = "../textures/fannormflat.png";
+const char * monsterFile = "../textures/monster.jpg";
+const char * doorFile = "../textures/door.jpg";
+const char * doorNormOutFile = "../textures.doornormout.png";
 
 // Camera
 vec3 eye = {3.0f, 0.0f, 0.0f};
@@ -170,18 +177,23 @@ GLfloat camera_angle = 180.0f;
 GLfloat step_size = 0.1f;
 GLfloat blind_angle = 0.0f;
 GLfloat max_blind_angle = 90.0f;
+GLfloat wall_switch_angle = 45.0f;
+GLfloat bounds_limit = 2.3f;
 GLdouble elTime = 0.0;
-GLboolean pyr_dance = false;
-GLboolean first_person = false;
-GLboolean bump = false;
+GLboolean fan_spin = false;
+GLboolean first_person = true;
 GLboolean mirror = false;
 GLboolean move_blinds = false;
 GLint blind_dir = 1;
+GLint fan_switch_angle_dir = 1;
+GLint fan_light_switch_angle_dir = -1;
+GLint painting_light_switch_angle_dir = -1;
 GLint x = 0; GLint y = 1; GLint z = 2;
 
 void display();
 void create_mirror();
 void calculate_first_person_camera();
+void check_bounds();
 void update_animations();
 void render_scene();
 void render_walls();
@@ -190,9 +202,15 @@ void render_floor();
 void render_ceiling();
 void render_objects();
 void render_table();
+void render_mug();
+void render_liquid();
+void render_monster_can();
+void render_fruit_bowl();
 void render_chairs();
 void render_ceiling_fan();
+void render_lights();
 void render_blinds();
+void render_wall_switches();
 void build_poster(GLuint obj);
 void build_mirror(GLuint m_texid);
 void build_floor(GLuint obj);
@@ -314,6 +332,10 @@ int main(int argc, char**argv) {
     // Set background color
     glClearColor(0.0f, 0.0f, 0.7f, 1.0f);
 
+    // Enable blending and set blend factors
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // Set Initial camera position
     GLfloat x, y, z;
     x = (GLfloat)(radius*sin(azimuth*DEG2RAD)*sin(elevation*DEG2RAD));
@@ -343,6 +365,9 @@ int main(int argc, char**argv) {
 
         // Calculate first person camera coordinates
         calculate_first_person_camera();
+
+        // Check the location of the user
+        check_bounds();
     }
 
     // Close window
@@ -383,15 +408,30 @@ void create_mirror() {
 
 void calculate_first_person_camera() {
     first_person_center[x] = first_person_eye[x] + (float) cos(camera_angle);
-    first_person_center[y] = first_person_eye[y];
+    first_person_center[y] = first_person_eye[y] + (float) cos(elevation * DEG2RAD);
     first_person_center[z] = first_person_eye[z] + (float) sin(camera_angle);
+}
+
+void check_bounds() {
+    if (first_person_eye[x] >= bounds_limit) {
+        first_person_eye[x] = bounds_limit - 0.1f;
+    }
+    if (first_person_eye[x] <= -bounds_limit) {
+        first_person_eye[x] = -bounds_limit + 0.1f;
+    }
+    if (first_person_eye[z] >= bounds_limit) {
+        first_person_eye[z] = bounds_limit - 0.1f;
+    }
+    if (first_person_eye[z] <= -bounds_limit) {
+        first_person_eye[z] = -bounds_limit + 0.1f;
+    }
 }
 
 void update_animations() {
     GLdouble curTime = glfwGetTime();
     GLdouble dT = curTime - elTime;
 
-    if (pyr_dance) {
+    if (fan_spin) {
         fan_angle += (float) (dT * (rpm / 60.0) * 360.0) * 4;
     }
 
@@ -452,8 +492,14 @@ void render_scene() {
     render_ceiling();
     render_objects();
     render_table();
+    render_mug();
+    render_liquid();
+    render_monster_can();
+    render_fruit_bowl();
     render_chairs();
     render_ceiling_fan();
+    render_lights();
+    render_wall_switches();
     render_blinds();
 }
 
@@ -527,14 +573,7 @@ void render_door() {
     rot_matrix = rotate(90.0f, y_axis);
     model_matrix = trans_matrix * rot_matrix * scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    draw_mat_object(Cube, WhitePlastic);
-
-    // Knob
-    trans_matrix = translate(3.40f, 0.0f, -0.75f);
-    scale_matrix = scale(0.1f, 0.1f, 0.1f);
-    model_matrix = trans_matrix * scale_matrix;
-    normal_matrix = model_matrix.inverse().transpose();
-    draw_mat_object(Sphere, YellowPlastic);
+    draw_bump_object(Cube, Fan, MegadethNormFlat);
 }
 
 void render_floor() {
@@ -549,10 +588,7 @@ void render_floor() {
     scale_matrix = scale(floor_scale_matrix);
     model_matrix = trans_matrix*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(FloorCube, Carpet, CarpetNormOut);
-    else
-        draw_tex_object(FloorCube, Carpet);
+    draw_bump_object(FloorCube, Carpet, CarpetNormOut);
 }
 
 void render_ceiling() {
@@ -566,7 +602,7 @@ void render_ceiling() {
     trans_matrix = translate(0.0f, 3.0f, 0.0f);
     scale_matrix = scale(floor_scale_matrix);
     model_matrix = trans_matrix*scale_matrix;
-    draw_tex_object(Cube, Floor);
+    draw_bump_object(Cube, Wall, WallNormOut);
 }
 
 void render_objects() {
@@ -603,10 +639,7 @@ void render_objects() {
     scale_matrix = scale(1.0f, 1.0f, 1.0f);
     model_matrix = trans_matrix*rot_matrix*rot_matrix_2*rot_matrix_3*scale_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(Poster, Megadeth, MegadethNormFlat);
-    else
-        draw_tex_object(Poster, Megadeth);
+    draw_bump_object(Poster, Megadeth, MegadethNormFlat);
 }
 
 void render_table() {
@@ -620,10 +653,85 @@ void render_table() {
     trans_matrix = translate(0.0f, -1.0f, 0.0f);
     scale_matrix = scale(0.5f, 0.5f, 0.5f);
     model_matrix = trans_matrix*scale_matrix;
-    if (bump)
-        draw_bump_object(Table, Wood, WoodNormOut);
-    else
-        draw_tex_object(Table, Wood);
+    draw_bump_object(Table, Wood, WoodNormOut);
+}
+
+void render_mug() {
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    trans_matrix = translate(0.3f, -0.30f, 0.4f);
+    scale_matrix = scale(0.1f, 0.1f, 0.1f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Mug, BlueAcrylic);
+}
+
+void render_liquid() {
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    trans_matrix = translate(0.3f, -0.2f, 0.4f);
+    scale_matrix = scale(0.09f, 0.1f, 0.09f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cylinder, GreenPlastic);
+}
+
+void render_monster_can() {
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    trans_matrix = translate(0.3f, -0.1f, 0.0f);
+    scale_matrix = scale(0.05f, 0.1f, 0.05f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_bump_object(MonsterCan, Monster, MegadethNormFlat);
+}
+
+void render_fruit_bowl() {
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    // Bowl
+    trans_matrix = translate(-0.3f, -0.3f, 0.3f);
+    scale_matrix = scale(0.0012f, 0.0012f, 0.0012f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Bowl, WhitePlastic);
+
+    // Fruit
+    trans_matrix = translate(-0.2f, -0.2f, 0.2f);
+    scale_matrix = scale(0.07f, 0.07f, 0.07f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Sphere, RedPlastic);
+
+    trans_matrix = translate(-0.2f, -0.2f, 0.3f);
+    scale_matrix = scale(0.07f, 0.07f, 0.07f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Sphere, GreenPlastic);
+
+    trans_matrix = translate(-0.3f, -0.2f, 0.3f);
+    scale_matrix = scale(0.07f, 0.07f, 0.07f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Sphere, BluePlastic);
+
+    trans_matrix = translate(-0.3f, -0.2f, 0.38f);
+    scale_matrix = scale(0.07f, 0.07f, 0.07f);
+    model_matrix = trans_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Sphere, RedPlastic);
 }
 
 void render_chairs() {
@@ -639,20 +747,14 @@ void render_chairs() {
     scale_matrix = scale(0.01f, 0.01f, 0.01f);
     rot_matrix = rotate(270.0f, x_axis);
     model_matrix = trans_matrix*scale_matrix*rot_matrix;
-    if (bump)
-        draw_bump_object(Chair, Wood, WoodNormOut);
-    else
-        draw_tex_object(Chair, Wood);
+    draw_bump_object(Chair, Wood, WoodNormOut);
 
     trans_matrix = translate(0.0f, -1.0f, 1.0f);
     scale_matrix = scale(0.01f, 0.01f, 0.01f);
     rot_matrix = rotate(270.0f, x_axis);
     rot_2_matrix = rotate(180.0f, z_axis);
     model_matrix = trans_matrix*scale_matrix*rot_matrix*rot_2_matrix;
-    if (bump)
-        draw_bump_object(Chair, Wood, WoodNormOut);
-    else
-        draw_tex_object(Chair, Wood);
+    draw_bump_object(Chair, Wood, WoodNormOut);
 }
 
 void render_ceiling_fan() {
@@ -668,10 +770,87 @@ void render_ceiling_fan() {
     rot_matrix = rotate(fan_angle, y_axis);
     model_matrix = trans_matrix*scale_matrix*rot_matrix;
     normal_matrix = model_matrix.inverse().transpose();
-    if (bump)
-        draw_bump_object(CeilingFan, Fan, FanNormFlat);
+    draw_bump_object(CeilingFan, Fan, FanNormFlat);
+}
+
+void render_lights() {
+    // Declare transformation matrices
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    // Fan light
+    trans_matrix = translate(ceiling_fan_coords[x], ceiling_fan_coords[y] + 2.75f, ceiling_fan_coords[z]);
+    scale_matrix = scale(0.15f, 0.15f, 0.15f);
+    model_matrix = trans_matrix*scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    if (lightOn[CeilingFanLight] == 1)
+        draw_mat_object(Sphere, YellowAcrylic);
     else
-        draw_tex_object(CeilingFan, Fan);
+        draw_mat_object(Sphere, BlueAcrylic);
+
+    // Painting Light
+    trans_matrix = translate(painting_coords[x], painting_coords[y] + 2.5f, painting_coords[z]);
+    scale_matrix = scale(0.2f, 0.2f, 0.2f);
+    model_matrix = trans_matrix*scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    if (lightOn[PaintingLight] == 1)
+        draw_mat_object(Sphere, YellowAcrylic);
+    else
+        draw_mat_object(Sphere, BlueAcrylic);
+}
+
+void render_wall_switches() {
+    model_matrix = mat4().identity();
+    mat4 scale_matrix = mat4().identity();
+    mat4 rot_matrix = mat4().identity();
+    mat4 trans_matrix = mat4().identity();
+
+    // Fan switch
+    trans_matrix = translate(door_coords[x], door_coords[y], door_coords[z] + 2.0f);
+    scale_matrix = scale(0.25f, 0.5f, 0.1f);
+    rot_matrix = rotate(90.0f, y_axis);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cube, BrownPlastic);
+
+    trans_matrix = translate(door_coords[x] - 0.05f, door_coords[y], door_coords[z] + 2.0f);
+    scale_matrix = scale(0.25f, 0.05f, 0.1f);
+    rot_matrix = rotate(wall_switch_angle * (float) fan_switch_angle_dir, z_axis);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cube, WhitePlastic);
+
+    // Fan light switch
+    trans_matrix = translate(door_coords[x], door_coords[y], door_coords[z] + 2.75f);
+    scale_matrix = scale(0.25f, 0.5f, 0.1f);
+    rot_matrix = rotate(90.0f, y_axis);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cube, BrownPlastic);
+
+    trans_matrix = translate(door_coords[x] - 0.05f, door_coords[y], door_coords[z] + 2.75f);
+    scale_matrix = scale(0.25f, 0.05f, 0.1f);
+    rot_matrix = rotate(wall_switch_angle * (float) fan_light_switch_angle_dir, z_axis);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cube, WhitePlastic);
+
+    // Painting light switch
+    trans_matrix = translate(door_coords[x], door_coords[y], door_coords[z] + 3.50f);
+    scale_matrix = scale(0.25f, 0.5f, 0.1f);
+    rot_matrix = rotate(90.0f, y_axis);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cube, BrownPlastic);
+
+    trans_matrix = translate(door_coords[x] - 0.05f, door_coords[y], door_coords[z] + 3.50f);
+    scale_matrix = scale(0.25f, 0.05f, 0.1f);
+    rot_matrix = rotate(wall_switch_angle * (float) painting_light_switch_angle_dir, z_axis);
+    model_matrix = trans_matrix * rot_matrix * scale_matrix;
+    normal_matrix = model_matrix.inverse().transpose();
+    draw_mat_object(Cube, WhitePlastic);
 }
 
 void render_blinds() {
@@ -1067,6 +1246,12 @@ void build_geometry() {
     load_bump_model(posterFile, Poster);
     load_bump_model(cubeFile, FloorCube);
     load_bump_model(cubeFile, WallCube);
+    load_model(mugFile, Mug);
+    load_model(cylinderFile, Cylinder);
+    load_bump_model(cylinderFile, MonsterCan);
+    load_bump_model(cubeFile, Door);
+    load_model(bowlFile, Bowl);
+    load_model(sphereFile, Sphere);
 
     build_tex_mapped_obj(Poster);
 
@@ -1075,6 +1260,8 @@ void build_geometry() {
     build_floor(FloorCube);
 
     build_wall(WallCube);
+
+    build_tex_mapped_obj(Door);
 
     // Generate color buffers
     glGenBuffers(NumColorBuffers, ColorBuffers);
@@ -1132,12 +1319,30 @@ void build_materials() {
             {0.0f, 0.0f, 0.0f}  //pad //pad
     };
 
+    MaterialProperties blueAcrylic {
+            vec4(0.2f, 0.2f, 0.4f, 0.6f), //ambient
+            vec4(0.4f, 0.4f, 0.8f, 0.6f), //diffuse
+            vec4(0.6f, 0.6f, 0.9f, 0.6f), //specular
+            27.8f, //shininess
+            {0.0f, 0.0f, 0.0f}  //pad
+    };
+
+    MaterialProperties yellowAcrylic = {
+            vec4(0.4f, 0.4f, 0.1f, 0.6f), //ambient
+            vec4(0.6f, 0.6f, 0.1f, 0.6f), //diffuse
+            vec4(0.8f, 0.8f, 0.2f, 0.6f), //specular
+            27.8f, //shininess
+            {0.0f, 0.0f, 0.0f}  //pad
+    };
+
     Materials.push_back(redPlastic);
     Materials.push_back(greenPlastic);
     Materials.push_back(bluePlastic);
     Materials.push_back(whitePlastic);
     Materials.push_back(yellowPlastic);
     Materials.push_back(brownPlastic);
+    Materials.push_back(blueAcrylic);
+    Materials.push_back(yellowAcrylic);
 
     glGenBuffers(NumMaterialBuffers, MaterialBuffers);
     glBindBuffer(GL_UNIFORM_BUFFER, MaterialBuffers[MaterialBuffer]);
@@ -1150,24 +1355,11 @@ void build_lights( ) {
     LightProperties whitePointLight = {
             POINT, //type
             {0.0f, 0.0f, 0.0f}, //pad
-            vec4(0.0f, 0.0f, 0.0f, 1.0f), //ambient
-            vec4(1.0f, 1.0f, 1.0f, 1.0f), //diffuse
-            vec4(1.0f, 1.0f, 1.0f, 1.0f), //specular
-            vec4(3.0f, 4.0f, 0.0f, 1.0f),  //position
-            vec4(0.0f, 0.0f, 0.0f, 0.0f), //direction
-            0.0f,   //cutoff
-            0.0f,  //exponent
-            {0.0f, 0.0f}  //pad2
-    };
-
-    LightProperties doorLight = {
-            SPOT, //type
-            {0.0f, 0.0f, 0.0f}, //pad
             vec4(0.2f, 0.2f, 0.2f, 1.0f), //ambient
             vec4(1.0f, 1.0f, 1.0f, 1.0f), //diffuse
             vec4(1.0f, 1.0f, 1.0f, 1.0f), //specular
-            vec4(door_coords[x] - 1, 9.0f, door_coords[z], 1.0f),  //position
-            vec4(0.0f, -1.0f, 0.0f, 0.0f), //direction
+            vec4(0.0f, 6.0f, 0.0f, 1.0f),  //position
+            vec4(0.0f, 0.0f, 0.0f, 0.0f), //direction
             10.0f,   //cutoff
             10.0f,  //exponent
             {0.0f, 0.0f}  //pad2
@@ -1192,7 +1384,7 @@ void build_lights( ) {
             vec4(0.2f, 0.2f, 0.2f, 1.0f), //ambient
             vec4(1.0f, 1.0f, 1.0f, 1.0f), //diffuse
             vec4(1.0f, 1.0f, 1.0f, 1.0f), //specular
-            vec4(ceiling_fan_coords[x], 7.0f, ceiling_fan_coords[z], 1.0f),  //position
+            vec4(ceiling_fan_coords[x], 9.0f, ceiling_fan_coords[z], 1.0f),  //position
             vec4(0.0f, -1.0f, 0.0f, 0.0f), //direction
             10.0f,   //cutoff
             10.0f,  //exponent
@@ -1200,7 +1392,6 @@ void build_lights( ) {
     };
 
     Lights.push_back(whitePointLight);
-    Lights.push_back(doorLight);
     Lights.push_back(paintingLight);
     Lights.push_back(ceilingFanLight);
 
@@ -1249,6 +1440,12 @@ void build_textures() {
                  GL_REPEAT, GL_REPEAT, true, false);
     load_texture(fanNormFlatFile, FanNormFlat, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
                  GL_REPEAT, GL_REPEAT, true, false);
+    load_texture(monsterFile, Monster, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
+                 GL_REPEAT, GL_REPEAT, true, false);
+    load_texture(doorFile, DoorTex, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
+                 GL_REPEAT, GL_REPEAT, true, false);
+    load_texture(doorNormOutFile, DoorNormOut, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
+                 GL_REPEAT, GL_REPEAT, true, false);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -1257,39 +1454,30 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         glfwSetWindowShouldClose(window, true);
     }
 
-    if (key == GLFW_KEY_0 && action == GLFW_PRESS) {
-        lightOn[WhitePointLight] = (lightOn[WhitePointLight] + 1) % 2;
-    }
-
-    if (key == GLFW_KEY_1 && action == GLFW_PRESS) {
-        lightOn[DoorLight] = (lightOn[DoorLight] + 1) % 2;
-    }
-
-    if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_M && action == GLFW_PRESS) {
         lightOn[PaintingLight] = (lightOn[PaintingLight] + 1) % 2;
+        painting_light_switch_angle_dir *= -1;
     }
 
-    if (key == GLFW_KEY_3 && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_L && action == GLFW_PRESS) {
         lightOn[CeilingFanLight] = (lightOn[CeilingFanLight] + 1) % 2;
-    }
-
-    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
-        pyr_dance = (pyr_dance + 1) % 2;
+        fan_light_switch_angle_dir *= -1;
     }
 
     if (key == GLFW_KEY_P && action == GLFW_PRESS) {
         first_person = (first_person + 1) % 2;
     }
 
-    if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
-        bump = (bump + 1) % 2;
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+        fan_spin = (fan_spin + 1) % 2;
+        fan_switch_angle_dir *= -1;
     }
 
     if (key == GLFW_KEY_M && action == GLFW_PRESS) {
         mirror = (mirror + 1) % 2;
     }
 
-    if ((key == GLFW_KEY_B && action == GLFW_PRESS) && !move_blinds) {
+    if ((key == GLFW_KEY_O && action == GLFW_PRESS) && !move_blinds) {
         move_blinds = true;
     }
 
@@ -1302,6 +1490,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             }
         } else {
             camera_angle -= 0.1f;
+            elevation = 90.0f;
         }
 
     } else if (key == GLFW_KEY_D) {
@@ -1313,6 +1502,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             }
         } else {
             camera_angle += 0.1f;
+            elevation = 90.0f;
         }
     }
 
@@ -1328,6 +1518,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         } else {
             first_person_dir = first_person_center - first_person_eye;
             first_person_eye = first_person_eye + (first_person_dir * step_size);
+            elevation = 90.0f;
         }
     }
     else if (key == GLFW_KEY_S)
@@ -1341,6 +1532,24 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         } else {
             first_person_dir = first_person_center - first_person_eye;
             first_person_eye = first_person_eye - (first_person_dir * step_size);
+            elevation = 90.0f;
+        }
+    }
+
+    if (key == GLFW_KEY_Z) {
+        if (first_person) {
+            elevation += del;
+            if (elevation > 179.0) {
+                elevation = 179.0;
+            }
+        }
+
+    } else if (key == GLFW_KEY_X) {
+        if (first_person) {
+            elevation -= del;
+            if (elevation < 1.0) {
+                elevation = 1.0;
+            }
         }
     }
 
